@@ -1,4 +1,7 @@
 
+import logging
+logger = logging.getLogger(__name__)
+
 class FitFileHeader:
   SIZE = 12
   SIZE_CRC = 14 # Adds the 2-byte CRC at the end.
@@ -111,7 +114,7 @@ class CompressedTimestampFitFileRecordHeader:
     return f"Local Message Type: {self.local_message_type >> 5}; Time Offset (seconds): {self.time_offset}"
 
 def deserialize_fit_file_record_header(serialized:int) -> tuple[bool, NormalFitFileRecordHeader | CompressedTimestampFitFileRecordHeader]:
-  print(f"Serialized Record Header: {serialized:02X}")
+  logger.debug(f"Serialized Record Header: {serialized:02X}")
   fit_file_record_header = CompressedTimestampFitFileRecordHeader() if serialized & MASK_RECORD_HEADER_TYPE == MASK_RECORD_HEADER_TYPE else NormalFitFileRecordHeader()
 
   valid = fit_file_record_header.deserialize(serialized=serialized)
@@ -240,47 +243,45 @@ class FitFile:
         # Trust that the file is properly structured.
         successful = True
         while successful and 0 < data_size_remaining:
-          print(f"Data Size Remaining: {data_size_remaining}")
-          print(f"File offset: {offset:08X}")
+          logger.debug(f"Data Size Remaining: {data_size_remaining}")
+          logger.debug(f"File offset: {offset:08X}")
+
           # Read the record header.
           fit_file.seek(offset)
-          print(f"Record header peek: {fit_file.peek(1)[0]}")
+          logger.debug(f"Record header peek: {fit_file.peek(1)[0]}")
           successful, record_header = deserialize_fit_file_record_header(fit_file.read(1)[0])
           offset += 1
           data_size_remaining -= 1
 
-          # DEBUG
-          print(f"[Record {record_count + 1} Header]: {record_header}")
+          logger.debug(f"[Record {record_count + 1} Header]: {record_header}")
 
           # But verify, of course.
           if successful:
             if isinstance(record_header, NormalFitFileRecordHeader) and record_header.definition_message:
-              print(f"File offset: {offset:08X}")
+              logger.debug(f"File offset: {offset:08X}")
               # Grab a definition message record.
               definition_record = DefinitionMessageRecord()
               successful, size = definition_record.read_from_file(fit_file_path=fit_file_path, offset=offset, has_developer_fields=record_header.extended_developer_definitions)
               offset += size
               data_size_remaining -= size
 
-              # DEBUG
-              print(f"[Record {record_count + 1} Content ({size} bytes)]")
-              print(definition_record)
+              logger.debug(f"[Record {record_count + 1} Content ({size} bytes)]")
+              logger.debug(definition_record)
 
               # Associate the local message type in the record header to the definition message record.
               self.snapshots[record_count][record_header.local_message_type] = definition_record
-              print(f"Mapped LMT:{record_header.local_message_type} to GMN:{definition_record.global_message_number}")
+              logger.debug(f"Mapped LMT:{record_header.local_message_type} to GMN:{definition_record.global_message_number}")
             else:
-              print(f"File offset: {offset:08X}")
-              print(f"LMT:GMN Mappings: {self.snapshots[record_count]}")
+              logger.debug(f"File offset: {offset:08X}")
+              logger.debug(f"LMT:GMN Mappings: {self.snapshots[record_count]}")
               # Grab a data message record. Note that the data message record's local_message_type must be previously defined in order to grab the contents correctly.
               data_record = DataMessageRecord()
               successful, size = data_record.read_from_file(fit_file_path=fit_file_path, offset=offset, definition_message_record=self.snapshots[record_count][record_header.local_message_type])
               offset += size
               data_size_remaining -= size
 
-              # DEBUG
-              print(f"[Record {record_count + 1} Content ({size} bytes)]")
-              print(data_record)
+              logger.debug(f"[Record {record_count + 1} Content ({size} bytes)]")
+              logger.debug(data_record)
 
             if successful:
               # Generate a new message mapping snapshot.
@@ -295,11 +296,11 @@ class FitFile:
 
         # Read the CRC if the file header indicates one is used.
         if self.header.size == FitFileHeader.SIZE_CRC:
-          print(f"File offset: {offset:08X}")
+          logger.debug(f"File offset: {offset:08X}")
           fit_file.seek(offset)
           self.crc = int.from_bytes(fit_file.read(FitFileHeader.SIZE_CRC - FitFileHeader.SIZE), byteorder="little")
 
           # TODO: Verify the CRC.
-          print(f"File CRC: {self.crc:04X}")
+          logger.debug(f"File CRC: {self.crc:04X}")
 
     return record_count

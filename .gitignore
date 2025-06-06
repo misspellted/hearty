@@ -198,3 +198,6 @@ cython_debug/
 
 # And any configuration-by-imports
 config.py
+
+# Ignore logging output
+hearty.log

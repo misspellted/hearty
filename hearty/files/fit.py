@@ -1,6 +1,8 @@
 
 from collections import OrderedDict # Let the container maintain the sorted keys instead of sorting each time.
 
+from ..protocols.fit.encoded.record import NormalRecordHeader, CompressedTimestampRecordHeader, decode_record_header
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -38,91 +40,6 @@ class FitFileHeader:
           # TODO: Validate the CRC is correct.
   
     return valid
-
-MASK_RECORD_HEADER_TYPE = 0b1000_0000
-
-class NormalFitFileRecordHeader:
-  MASK_MESSAGE_TYPE = 0b0100_0000
-  MASK_MESSAGE_TYPE_SPECIFIC = 0b0010_0000
-  MASK_RESERVED = 0b0001_0000
-  MASK_LOCAL_MESSAGE_TYPE = 0b0000_1111
-
-  def __init__(self, definition_message:bool=False, extended_developer_definitions:bool=False, local_message_type:int=0):
-    self.definition_message = definition_message
-    self.extended_developer_definitions = extended_developer_definitions
-    self.local_message_type = local_message_type & NormalFitFileRecordHeader.MASK_LOCAL_MESSAGE_TYPE
-
-  def serialize(self) -> int:
-    # Start off with setting the normal header flag (0).
-    serialized = 0b0000_0000
-
-    # Then the message type field.
-    serialized |= (NormalFitFileRecordHeader.MASK_MESSAGE_TYPE if self.definition_message else 0)
-
-    # Followed by the message type specific field.
-    serialized |= (NormalFitFileRecordHeader.MASK_MESSAGE_TYPE_SPECIFIC if self.definition_message and self.extended_developer_definitions else 0)
-
-    # And finally the local message type bits.
-    serialized |= (NormalFitFileRecordHeader.MASK_LOCAL_MESSAGE_TYPE & self.local_message_type)
-
-    return serialized
-
-  def deserialize(self, serialized:int) -> bool:
-    valid = (serialized & MASK_RECORD_HEADER_TYPE) == 0b0000_0000
-
-    if valid:
-      self.definition_message = (serialized & NormalFitFileRecordHeader.MASK_MESSAGE_TYPE) == NormalFitFileRecordHeader.MASK_MESSAGE_TYPE
-
-      if self.definition_message:
-        self.extended_developer_definitions = (serialized & NormalFitFileRecordHeader.MASK_MESSAGE_TYPE_SPECIFIC) == NormalFitFileRecordHeader.MASK_MESSAGE_TYPE_SPECIFIC
-  
-      self.local_message_type = (serialized & NormalFitFileRecordHeader.MASK_LOCAL_MESSAGE_TYPE)
-
-    return valid
-
-  def __repr__(self):
-    return f"Message Type: {1 if self.definition_message else 0}; Message Type Specific: {1 if self.extended_developer_definitions else 0}; Local Message Type: {self.local_message_type}"
-
-class CompressedTimestampFitFileRecordHeader:
-  MASK_LOCAL_MESSAGE_TYPE = 0b0110_0000
-  MASK_TIME_OFFSET = 0b0001_1111
-
-  def __init__(self, local_message_type:int=0, time_offset:int=0):
-    self.local_message_type = ((local_message_type << 5) & CompressedTimestampFitFileRecordHeader.MASK_LOCAL_MESSAGE_TYPE) >> 5
-    self.time_offset = time_offset & CompressedTimestampFitFileRecordHeader.MASK_TIME_OFFSET
-
-  def serialize(self) -> int:
-    # Start off with setting the normal header flag (0).
-    serialized = MASK_RECORD_HEADER_TYPE
-
-    # Then the local message type bits.
-    serialized |= CompressedTimestampFitFileRecordHeader.MASK_LOCAL_MESSAGE_TYPE & self.local_message_type
-
-    # And finally the time offset bits.
-    serialized |= CompressedTimestampFitFileRecordHeader.MASK_TIME_OFFSET & self.time_offset
-
-    return serialized
-
-  def deserialize(self, serialized:int) -> bool:
-    valid = (serialized & MASK_RECORD_HEADER_TYPE) == MASK_RECORD_HEADER_TYPE
-
-    if valid:
-      self.local_message_type = (serialized & CompressedTimestampFitFileRecordHeader.MASK_LOCAL_MESSAGE_TYPE) >> 5
-      self.time_offset = serialized & CompressedTimestampFitFileRecordHeader.MASK_TIME_OFFSET
-
-    return valid
-
-  def __repr__(self):
-    return f"Local Message Type: {self.local_message_type}; Time Offset (seconds): {self.time_offset}"
-
-def deserialize_fit_file_record_header(serialized:int) -> tuple[bool, NormalFitFileRecordHeader | CompressedTimestampFitFileRecordHeader]:
-  logger.debug(f"Serialized Record Header: {serialized:02X}")
-  fit_file_record_header = CompressedTimestampFitFileRecordHeader() if serialized & MASK_RECORD_HEADER_TYPE == MASK_RECORD_HEADER_TYPE else NormalFitFileRecordHeader()
-
-  valid = fit_file_record_header.deserialize(serialized=serialized)
-
-  return (valid, fit_file_record_header)
-
 
 class FieldBaseType:
   MASK_HAS_ENDIANNESS = 0b1000_0000
@@ -338,7 +255,7 @@ class FitFile:
           # Read the record header.
           fit_file.seek(offset)
           logger.debug(f"Record header peek: {fit_file.peek(1)[0]}")
-          successful, record_header = deserialize_fit_file_record_header(fit_file.read(1)[0])
+          successful, record_header = decode_record_header(fit_file.read(1)[0])
           offset += 1
           data_size_remaining -= 1
 
@@ -346,11 +263,11 @@ class FitFile:
 
           # But verify, of course.
           if successful:
-            if isinstance(record_header, NormalFitFileRecordHeader) and record_header.definition_message:
+            if isinstance(record_header, NormalRecordHeader) and record_header.message_type:
               logger.debug(f"File offset: {offset:08X}")
               # Grab a definition message record.
               definition_record = DefinitionMessageRecord()
-              successful, size = definition_record.read_from_file(fit_file_path=fit_file_path, offset=offset, has_developer_fields=record_header.extended_developer_definitions)
+              successful, size = definition_record.read_from_file(fit_file_path=fit_file_path, offset=offset, has_developer_fields=record_header.message_type_specific)
 
               if successful:
                 offset += size

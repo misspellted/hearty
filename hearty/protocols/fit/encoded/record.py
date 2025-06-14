@@ -36,7 +36,7 @@ class NormalRecordHeader:
     return f"Message Type: {1 if self.message_type else 0}; Message Type Specific: {1 if self.message_type_specific else 0}; Local Message Type: {self.local_message_type}"
 
   def encode(self) -> tuple[bool, int]:
-    valid = None not in [self.message_type, self.message_type_specific, self.local_message_type]
+    valid = False if None in [self.message_type, self.message_type_specific, self.local_message_type] else False if self.message_type_specific and not self.message_type else True
     encoded = 0
 
     if valid:
@@ -67,7 +67,7 @@ class CompressedTimestampRecordHeader:
     return f"Local Message Type: {self.local_message_type}; Time Offset (seconds): {self.time_offset}"
 
   def encode(self) -> tuple[bool, int]:
-    valid = None not in [self.local_message_type, self.time_offset]
+    valid = False if None in [self.local_message_type, self.time_offset] else True
     encoded = 0
 
     if valid:

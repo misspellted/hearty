@@ -19,11 +19,11 @@ class BaseType:
 
   @property
   def name(self) -> str:
-    return NotImplementedError()
+    raise NotImplementedError()
 
   @property
-  def name(self) -> str:
-    return NotImplementedError()
+  def invalid_value(self) -> str:
+    raise NotImplementedError()
 
   def __repr__(self):
     return f"[{self.number:02d}] {self.name}!{self.invalid_value}"

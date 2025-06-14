@@ -1,6 +1,7 @@
 
 from collections import OrderedDict # Let the container maintain the sorted keys instead of sorting each time.
 
+from ..protocols.fit.encoded.field import FieldDefinition, FIELD_DEFINITION_BYTES
 from ..protocols.fit.encoded.record import NormalRecordHeader, CompressedTimestampRecordHeader, decode_record_header
 
 import logging
@@ -41,65 +42,6 @@ class FitFileHeader:
   
     return valid
 
-class FieldBaseType:
-  MASK_HAS_ENDIANNESS = 0b1000_0000
-  MASK_RESERVED = 0b0110_0000
-  MASK_BASE_TYPE_NUMBER = 0b0001_1111
-  MIN_BASE_TYPE_NUMBER = 0
-  MAX_BASE_TYPE_NUMBER = 16 # So far, anyways. By bits, this should be 31 ('for future use' is the assumption).
-
-  # From Table 7: "FIT Base Types and Invalid Values" @ https://developer.garmin.com/fit/protocol/#basetype
-  # (base_type_fied, type_name, invalid_value)
-  BASE_TYPES = {
-    0: (0x00, "enum", 0xFF),
-    1: (0x01, "sint8", 0x7F), # 2's complement format
-    2: (0x02, "uint8", 0xFF),
-    3: (0x83, "sint16", 0x7FFF), # 2's complement format
-    4: (0x84, "uint16", 0xFFFF),
-    5: (0x85, "sint32", 0x7FFFFFFF), # 2's complement format
-    6: (0x86, "uint32", 0xFFFFFFFF),
-    7: (0x07, "string", 0x00), # Null-terminated string encoded in UTF-8
-    8: (0x88, "float32", 0xFFFFFFFF),
-    9: (0x89, "float64", 0xFFFFFFFFFFFFFFFF),
-    10: (0x0A, "uint8z", 0x00),
-    11: (0x8B, "uint16z", 0x0000),
-    12: (0x8C, "uint32z", 0x00000000),
-    13: (0x0D, "byte", 0xFF), # Array of bytes. Field is invalid if all bytes are invalid
-    14: (0x8E, "sint64", 0x7FFFFFFFFFFFFFFF), # 2's complement format
-    15: (0x8F, "uint64", 0xFFFFFFFFFFFFFFFF),
-    16: (0x90, "uint64z", 0x0000000000000000),
-  }
-
-  def __init__(self, has_endianness:bool=True, base_type_number:int=0):
-    self.has_endianness = has_endianness
-    self.reserved = 0
-    self.base_type_number = base_type_number
-
-  def deserialize(self, serialized:int) -> bool:
-    self.has_endianness = (serialized & FieldBaseType.MASK_HAS_ENDIANNESS) == FieldBaseType.MASK_HAS_ENDIANNESS
-    self.reserved = (serialized & FieldBaseType.MASK_RESERVED) >> 5
-    self.base_type_number = serialized & FieldBaseType.MASK_BASE_TYPE_NUMBER
-
-    return self.reserved == 0 and FieldBaseType.MIN_BASE_TYPE_NUMBER <= self.base_type_number <= FieldBaseType.MAX_BASE_TYPE_NUMBER
-
-  def serialize(self) -> int:
-    serialized = FieldBaseType.MASK_HAS_ENDIANNESS if self.has_endianness else 0
-
-    # Skipping the reserved for now.
-
-    serialized |= FieldBaseType.MAX_BASE_TYPE_NUMBER if FieldBaseType.MAX_BASE_TYPE_NUMBER < self.base_type_number else self.base_type_number & FieldBaseType.MASK_BASE_TYPE_NUMBER
-
-    return serialized
-
-  def get_type_name(self):
-    return FieldBaseType.BASE_TYPES[self.base_type_number][1]
-
-  def get_invalid_value(self):
-    return FieldBaseType.BASE_TYPES[self.base_type_number][2]
-
-  def __repr__(self):
-    return f"{self.get_type_name()}!{self.get_invalid_value()}"
-
 class DefinitionMessageRecord:
   def __init__(self):
     self.reserved = None
@@ -126,20 +68,17 @@ class DefinitionMessageRecord:
       self.field_definition_count = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
 
       record_size += 5
-      # print(f"::DMR::read_from_file::size={record_size}")
 
       # Each field defintion is 3 bytes: Field Defintion Number, Size (in bytes), Base Type
       for _ in range(self.field_definition_count):
-        field_definition_number = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
-        size = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
+        fd = FieldDefinition()
+        valid = fd.decode([int.from_bytes(fit_file.read(1), byteorder=self.endianness) for _ in range(FIELD_DEFINITION_BYTES)])
 
-        base_type = FieldBaseType()
-        base_type.deserialize(int.from_bytes(fit_file.read(1), byteorder=self.endianness))
+        if not valid:
+          break
 
-        self.field_definitions.append((field_definition_number, size, base_type))
-
-        record_size += 3
-        # print(f"::DMR::read_from_file::size={record_size}")
+        self.field_definitions.append(fd)
+        record_size += FIELD_DEFINITION_BYTES
 
       # The record header indicates if there are developer field definitions.
       if has_developer_fields:
@@ -149,16 +88,11 @@ class DefinitionMessageRecord:
         # print(f"::DMR::read_from_file::size={record_size}")
 
         for _ in ran(self.developer_field_definition_count):
-          field_definition_number = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
-          size = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
+          dfd = FieldDefinition()
+          dfd.decode([int.from_bytes(fit_file.read(1), byteorder=self.endianness) for _ in range(FIELD_DEFINITION_BYTES)])
+          self.developer_field_definitions.append(dfd)
 
-          base_type = FieldBaseType()
-          base_type.deserialize(int.from_bytes(fit_file.read(1), byteorder=self.endianness))
-
-          self.developer_field_definitions.append((field_definition_number, size, base_type))
-
-          record_size += 3
-          # print(f"::DMR::read_from_file::size={record_size}")
+          record_size += FIELD_DEFINITION_BYTES
   
     return (valid, record_size)
 
@@ -179,17 +113,13 @@ class DataMessageRecord:
     with open(file=fit_file_path, mode="rb") as fit_file:
       fit_file.seek(offset)
 
-      for field_definition in definition_message_record.field_definitions:
-        fdn, fds, fdbt = field_definition
+      for fd in definition_message_record.field_definitions:
+        self.fields[fd.number] = (fd.base_type, int.from_bytes(fit_file.read(fd.size), byteorder=definition_message_record.endianness))
+        record_size += fd.size
 
-        self.fields[fdn] = (fdbt, int.from_bytes(fit_file.read(fds), byteorder=definition_message_record.endianness))
-        record_size += fds
-
-      for developer_field_definition in definition_message_record.developer_field_definitions:
-        dfdn, dfds, dfdbt = developer_field_definition
-
-        self.developer_fields[dfdn] = (dfdbt, int.from_bytes(fit_file.read(dfds), byteorder=definition_message_record.endianness))
-        record_size += dfds
+      for dfd in definition_message_record.developer_field_definitions:
+        self.developer_fields[dfd.number] = (dfd.base_type, int.from_bytes(fit_file.read(dfd.size), byteorder=definition_message_record.endianness))
+        record_size += dfd.size
   
     return (valid, record_size)
 
@@ -202,14 +132,15 @@ class FitMesssageRecord:
   """
   def __init__(self, definition:DefinitionMessageRecord, data:DataMessageRecord):
     self.global_message_number = definition.global_message_number
-    self.fields = OrderedDict() # key: (base_data_type: value)
 
-    for field in sorted([fdn for fdn, _, __ in definition.field_definitions]):
+    self.fields = OrderedDict()
+
+    for field in sorted([fd.number for fd in definition.field_definitions]):
       self.fields[field] = data.fields[field]
 
-    self.developer_fields = OrderedDict() # key: (base_data_type: value)
+    self.developer_fields = OrderedDict()
 
-    for developer_field in sorted([dfdn for dfdn, _, __ in definition.developer_field_definitions]):
+    for developer_field in sorted([dfd.number for dfd in definition.developer_field_definitions]):
       self.developer_fields[developer_field] = data.developer_fields[developer_field]
 
   def __repr__(self):
@@ -241,6 +172,12 @@ class FitFile:
 
     if self.header.read_from_file(fit_file_path=fit_file_path):
       offset = self.header.size
+
+      # Note (2025-06-14@0300 UTC): Happened to be watching WyoOS's Context-Free Grammars: LR(k) Grammars video
+      # (https://www.youtube.com/watch?v=FtxJylkW7Oo&list=PLHh55M_Kq4OAmzC6zR7NXhZT9z21NkRCa&index=5)
+      # And it made me realize maybe there's a grammar-based way to read the file?
+      # Maybe. Maybe not. Just had the idea.
+
       with open(file=fit_file_path, mode="rb") as fit_file:
         # Skip to the start of records.
         fit_file.seek(offset)

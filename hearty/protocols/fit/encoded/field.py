@@ -26,3 +26,17 @@ class FieldDefinition:
         self.base_type = base_types[bytes[FieldDefinition.BASE_TYPE]]
 
     return valid
+
+class Field:
+  def __init__(self, definition:FieldDefinition):
+    self.definition = definition
+    self.value = None
+
+  def evaluate(self, bytes:list[int], endianness:str) -> bool:
+    # endianness = {"little" | "big"}
+    self.value = int.from_bytes(bytes, byteorder=endianness)
+    # TODO: Don't assume an integer value? We have base_type in definition, so maybe we can evaluate from that.
+    return True # TODO: Actually indicate a successful or failing evaluation.
+
+  def __repr__(self):
+    return f"{self.value if self.value != None else '<none>'}"

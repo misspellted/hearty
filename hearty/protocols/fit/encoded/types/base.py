@@ -27,3 +27,6 @@ class BaseType:
 
   def __repr__(self):
     return f"[{self.number:02d}] {self.name}!{self.invalid_value}"
+
+  def evaluate(bytes:list[int], endianness:str) -> tuple[bool, object]:
+    raise NotImplementedError()

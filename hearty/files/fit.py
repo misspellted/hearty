@@ -1,7 +1,7 @@
 
 from collections import OrderedDict # Let the container maintain the sorted keys instead of sorting each time.
 
-from ..protocols.fit.encoded.field import FieldDefinition, FIELD_DEFINITION_BYTES
+from ..protocols.fit.encoded.field import FieldDefinition, FIELD_DEFINITION_BYTES, Field
 from ..protocols.fit.encoded.record import NormalRecordHeader, CompressedTimestampRecordHeader, decode_record_header
 
 import logging
@@ -63,7 +63,7 @@ class DefinitionMessageRecord:
       
       self.reserved = int.from_bytes(fit_file.read(1), byteorder="little")
       self.architecture = int.from_bytes(fit_file.read(1), byteorder="little")
-      self.endianness = "little" if self.architecture == 0 else "BIG"
+      self.endianness = "little" if self.architecture == 0 else "big"
       self.global_message_number = int.from_bytes(fit_file.read(2), byteorder=self.endianness)
       self.field_definition_count = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
 
@@ -85,13 +85,15 @@ class DefinitionMessageRecord:
         self.developer_field_definition_count = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
 
         record_size += 1
-        # print(f"::DMR::read_from_file::size={record_size}")
 
-        for _ in ran(self.developer_field_definition_count):
+        for _ in range(self.developer_field_definition_count):
           dfd = FieldDefinition()
           dfd.decode([int.from_bytes(fit_file.read(1), byteorder=self.endianness) for _ in range(FIELD_DEFINITION_BYTES)])
-          self.developer_field_definitions.append(dfd)
 
+          if not valid:
+            break
+
+          self.developer_field_definitions.append(dfd)
           record_size += FIELD_DEFINITION_BYTES
   
     return (valid, record_size)
@@ -114,11 +116,17 @@ class DataMessageRecord:
       fit_file.seek(offset)
 
       for fd in definition_message_record.field_definitions:
-        self.fields[fd.number] = (fd.base_type, int.from_bytes(fit_file.read(fd.size), byteorder=definition_message_record.endianness))
+        f = Field(fd)
+        if f.evaluate(bytes=fit_file.read(fd.size), endianness=definition_message_record.endianness):
+          self.fields[fd.number] = f
+        # self.fields[fd.number] = (fd.base_type, int.from_bytes(fit_file.read(fd.size), byteorder=definition_message_record.endianness))
         record_size += fd.size
 
       for dfd in definition_message_record.developer_field_definitions:
-        self.developer_fields[dfd.number] = (dfd.base_type, int.from_bytes(fit_file.read(dfd.size), byteorder=definition_message_record.endianness))
+        df = Field(dfd)
+        if df.evaluate(bytes=fit_file.read(dfd.size), endianness=definition_message_record.endianness):
+          self.developer_fields[dfd.number] = df
+        # self.developer_fields[dfd.number] = (dfd.base_type, int.from_bytes(fit_file.read(dfd.size), byteorder=definition_message_record.endianness))
         record_size += dfd.size
   
     return (valid, record_size)

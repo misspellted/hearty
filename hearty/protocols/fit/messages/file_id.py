@@ -34,7 +34,7 @@ class FileIdMessage:
   def from_file_message_record(self, file_message_record):
     for fdn, btn_val in file_message_record.fields.items():
       if fdn in FileIdMessage.FIELDS:
-        setattr(self, FileIdMessage.FIELDS[fdn], btn_val[1]) # TODO: Evaluate the value through the base type. # TODO: Ensure the base type from the file record is expected (as noted above).
+        setattr(self, FileIdMessage.FIELDS[fdn], btn_val) # TODO: Evaluate the value through the base type. # TODO: Ensure the base type from the file record is expected (as noted above).
       else:
         self.unknown[fdn] = btn_val
 

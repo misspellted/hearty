@@ -30,3 +30,5 @@ class Float64(BaseType):
   @property
   def invalid_value(self):
     return 0xFFFF_FFFF_FFFF_FFFF
+
+# TODO: Use struct module to unpack floating point numbers (Float32 -> 'f', Float64 -> 'd').

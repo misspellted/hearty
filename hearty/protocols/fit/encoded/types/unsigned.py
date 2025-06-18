@@ -120,3 +120,5 @@ class UInt64Z(BaseType):
   @property
   def invalid_value(self):
     return 0x0000_0000_0000_0000
+
+# TODO: Copy the mechanism to evaluate SInt*'s.

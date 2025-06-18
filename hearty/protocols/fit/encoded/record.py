@@ -88,3 +88,42 @@ def decode_record_header(encoded_record_header:int) -> tuple[bool, NormalRecordH
   logger.debug(f"Decoded record header (valid? {valid}): {record_header}")
 
   return (valid, record_header)
+
+class MessageDefinitionRecord:
+  def __init__(self):
+    self.header = None
+    self.reserved = None
+    self.architecture = None
+    self.global_message_number = None
+    self.field_definition_count = 0
+    self.field_definitions = list()
+    self.developer_field_definition_count = 0
+    self.developer_field_definitions = list()
+
+    # Make it easier to work with endianness instead of checking architecture being 0 or 1 (which may change in the future, since architecture is 8 bits; endianness is only 1).
+    self.endianness = None
+
+  def __repr__(self):
+    fds = [f"{definition.number}: {definition}" for definition in self.field_definitions]
+
+    if self.header.has_developer_fields:
+      dfds = [f"{definition.number}: {definition}" for definition in self.developer_field_definitions]
+      return f"Endianness: {self.endianness}; GMN: {self.global_message_number}; FDC: {self.field_definition_count} ({fds}); DFDC: {self.developer_field_definition_count}"
+    else:
+      return f"Endianness: {self.endianness}; GMN: {self.global_message_number}; FDC: {self.field_definition_count} ({fds}); DFDC: {self.developer_field_definition_count} ({dfds})"
+
+class MessageDataRecord:
+  def __init__(self):
+    self.header = None
+    self.message_defintion_record = None
+    self.fields = dict()
+    self.developer_fields = dict()
+
+  def __repr__(self):
+    fs = [f"{number}: {definition}" for number, value in  self.message_defintion_record.field_definitions.items()]
+
+    if self.message_defintion_record.header.has_developer_fields:
+      dfs = [f"{number}: {definition}" for number, _ in self.message_defintion_record.developer_field_definitions.items()]
+      return f"GMN: {self.message_defintion_record.global_message_number}; FS: {fs}; DFS: {dfs}"
+    else:
+      return f"GMN: {self.message_defintion_record.global_message_number}; FS: {fs}; DFS: <none>"

@@ -1,5 +1,5 @@
 
-from .base import BaseType
+from .base import BaseType, evaluate_integer
 
 # Signed base types are in 2's complement format.
 
@@ -20,9 +20,7 @@ class SInt8(BaseType):
     return 0x7F
 
   def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
-    valid = SInt8.BYTES == len(bytes) and bytes[0] != self.invalid_value
-
-    return (valid, None if not valid else int.from_bytes(bytes, signed=True))
+    return evaluate_integer(signed=True, octets=SInt8.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
 
 class SInt16(BaseType):
   NUMBER = 0x83
@@ -41,16 +39,7 @@ class SInt16(BaseType):
     return 0x7FFF
 
   def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
-    valid = SInt16.BYTES == len(bytes)
-
-    if valid:
-      # Compare each byte to the invalid value as bytes in the endianness order.
-      invalid_bytes = self.invalid_value.to_bytes(SInt16.BYTES, byteorder=endianness, signed=True)
-      comps = [True if invalid_bytes[_] == bytes[_] else False for _ in range(SInt16.BYTES)]
-
-      valid = False if False not in comps else True
-
-    return (valid, None if not valid else int.from_bytes(bytes, byteorder=endianness, signed=True))
+    return evaluate_integer(signed=True, octets=SInt16.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
 
 class SInt32(BaseType):
   NUMBER = 0x85
@@ -69,16 +58,7 @@ class SInt32(BaseType):
     return 0x7FFF_FFFF
 
   def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
-    valid = SInt32.BYTES == len(bytes)
-
-    if valid:
-      # Compare each byte to the invalid value as bytes in the endianness order.
-      invalid_bytes = self.invalid_value.to_bytes(SInt32.BYTES, byteorder=endianness, signed=True)
-      comps = [True if invalid_bytes[_] == bytes[_] else False for _ in range(SInt32.BYTES)]
-
-      valid = False if False not in comps else True
-
-    return (valid, None if not valid else int.from_bytes(bytes, byteorder=endianness, signed=True))
+    return evaluate_integer(signed=True, octets=SInt32.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
 
 class SInt64(BaseType):
   NUMBER = 0x8E
@@ -97,13 +77,4 @@ class SInt64(BaseType):
     return 0x7FFF_FFFF_FFFF_FFFF
 
   def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
-    valid = SInt64.BYTES == len(bytes)
-
-    if valid:
-      # Compare each byte to the invalid value as bytes in the endianness order.
-      invalid_bytes = self.invalid_value.to_bytes(SInt64.BYTES, byteorder=endianness, signed=True)
-      comps = [True if invalid_bytes[_] == bytes[_] else False for _ in range(SInt64.BYTES)]
-
-      valid = False if False not in comps else True
-
-    return (valid, None if not valid else int.from_bytes(bytes, byteorder=endianness, signed=True))
+    return evaluate_integer(signed=True, octets=SInt64.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)

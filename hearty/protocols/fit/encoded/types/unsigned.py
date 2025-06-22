@@ -16,6 +16,9 @@ class UInt8(BaseType):
   def invalid_value(self):
     return 0xFF
 
+  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=False, octets=UInt8.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+
 class UInt16(BaseType):
   NUMBER = 0x84
 
@@ -30,6 +33,9 @@ class UInt16(BaseType):
   @property
   def invalid_value(self):
     return 0xFFFF
+
+  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=False, octets=UInt16.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
 
 class UInt32(BaseType):
   NUMBER = 0x86
@@ -46,6 +52,9 @@ class UInt32(BaseType):
   def invalid_value(self):
     return 0xFFFF_FFFF
 
+  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=False, octets=UInt32.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+
 class UInt64(BaseType):
   NUMBER = 0x8F
 
@@ -60,6 +69,9 @@ class UInt64(BaseType):
   @property
   def invalid_value(self):
     return 0xFFFF_FFFF_FFFF_FFFF
+
+  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=False, octets=UInt64.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
 
 class UInt8Z(BaseType):
   NUMBER = 0x0A
@@ -76,6 +88,9 @@ class UInt8Z(BaseType):
   def invalid_value(self):
     return 0x00
 
+  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=False, octets=UInt8Z.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+
 class UInt16Z(BaseType):
   NUMBER = 0x8B
 
@@ -90,6 +105,9 @@ class UInt16Z(BaseType):
   @property
   def invalid_value(self):
     return 0x0000
+
+  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=False, octets=UInt16Z.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
 
 class UInt32Z(BaseType):
   NUMBER = 0x8C
@@ -106,6 +124,9 @@ class UInt32Z(BaseType):
   def invalid_value(self):
     return 0x0000_0000
 
+  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=False, octets=UInt32Z.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+
 class UInt64Z(BaseType):
   NUMBER = 0x90
 
@@ -121,4 +142,5 @@ class UInt64Z(BaseType):
   def invalid_value(self):
     return 0x0000_0000_0000_0000
 
-# TODO: Copy the mechanism to evaluate SInt*'s.
+  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=False, octets=UInt64Z.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)

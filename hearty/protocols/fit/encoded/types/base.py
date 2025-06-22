@@ -30,3 +30,18 @@ class BaseType:
 
   def evaluate(bytes:list[int], endianness:str) -> tuple[bool, object]:
     raise NotImplementedError()
+
+def evaluate_integer(signed:bool, octets:int, bytes:list[int], endianness:str, invalid_value:int=None) -> tuple[bool, int]:
+  valid = octets == len(bytes)
+  value = None
+  
+  if valid and isinstance(invalid_value, int):
+    invalid_bytes = invalid_value.to_bytes(octets, byteorder=endianness, signed=signed)
+    comparisons = [True if invalid_bytes[_] == bytes[_] else False for _ in range(octets)]
+    
+    valid = False if False not in comparisons else True
+
+    if valid:
+      value = int.from_bytes(bytes, byteorder=endianness, signed=signed)
+
+  return (valid, value)

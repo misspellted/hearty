@@ -2,6 +2,8 @@
 import logging
 logger = logging.getLogger(__name__)
 
+from .field import FieldDefinition, FIELD_DEFINITION_BYTES, Field
+
 MASK_RECORD_HEADER_TYPE = 0b1000_0000
 """
 A bitmask to identify which record header type is encoded.
@@ -103,27 +105,104 @@ class MessageDefinitionRecord:
     # Make it easier to work with endianness instead of checking architecture being 0 or 1 (which may change in the future, since architecture is 8 bits; endianness is only 1).
     self.endianness = None
 
+  def read_from_file(self, fit_file_path:str, offset:int, record_header:NormalRecordHeader) -> tuple[bool, int]:
+    # Trust the contents of the definition message is valid, but verify when possible.
+    valid = True
+    record_size = 0
+
+    # Ensure the record header is the normal type (needs to be to determine if there are developer field definitions).
+    if isinstance(record_header, NormalRecordHeader):
+      self.header = record_header
+
+      with open(file=fit_file_path, mode="rb") as fit_file:
+        fit_file.seek(offset)
+
+        self.reserved = int.from_bytes(fit_file.read(1), byteorder="little")
+        self.architecture = int.from_bytes(fit_file.read(1), byteorder="little")
+        self.endianness = "little" if self.architecture == 0 else "big"
+        self.global_message_number = int.from_bytes(fit_file.read(2), byteorder=self.endianness)
+        self.field_definition_count = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
+
+        record_size += 5
+
+        for _ in range(self.field_definition_count):
+          fd = FieldDefinition()
+          valid = fd.decode([int.from_bytes(fit_file.read(1), byteorder=self.endianness) for _ in range(FIELD_DEFINITION_BYTES)])
+
+          if not valid:
+            break
+
+          self.field_definitions.append(fd)
+          record_size += FIELD_DEFINITION_BYTES
+
+        if self.header.message_type_specific:
+          self.developer_field_definition_count = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
+
+          record_size += 1
+
+          for _ in range(self.developer_field_definition_count):
+            dfd = FieldDefinition()
+            dfd.decode([int.from_bytes(fit_file.read(1), byteorder=self.endianness) for _ in range(FIELD_DEFINITION_BYTES)])
+
+            if not valid:
+              break
+
+            self.developer_field_definitions.append(dfd)
+            record_size += FIELD_DEFINITION_BYTES
+
+    return (valid, record_size)
+
   def __repr__(self):
     fds = [f"{definition.number}: {definition}" for definition in self.field_definitions]
 
-    if self.header.has_developer_fields:
+    if self.header.message_type_specific:
       dfds = [f"{definition.number}: {definition}" for definition in self.developer_field_definitions]
-      return f"Endianness: {self.endianness}; GMN: {self.global_message_number}; FDC: {self.field_definition_count} ({fds}); DFDC: {self.developer_field_definition_count}"
-    else:
       return f"Endianness: {self.endianness}; GMN: {self.global_message_number}; FDC: {self.field_definition_count} ({fds}); DFDC: {self.developer_field_definition_count} ({dfds})"
+    else:
+      return f"Endianness: {self.endianness}; GMN: {self.global_message_number}; FDC: {self.field_definition_count} ({fds}); DFDC: {self.developer_field_definition_count}"
 
 class MessageDataRecord:
   def __init__(self):
     self.header = None
-    self.message_defintion_record = None
     self.fields = dict()
     self.developer_fields = dict()
 
-  def __repr__(self):
-    fs = [f"{number}: {definition}" for number, value in  self.message_defintion_record.field_definitions.items()]
+  def read_from_file(self, fit_file_path:str, offset:int, record_header:tuple[NormalRecordHeader, CompressedTimestampRecordHeader], message_defintion_record:MessageDefinitionRecord) -> tuple[bool, int]:
+    # Trust the contents of the definition message is valid, but verify when possible.
+    valid = True
+    record_size = 0
 
-    if self.message_defintion_record.header.has_developer_fields:
-      dfs = [f"{number}: {definition}" for number, _ in self.message_defintion_record.developer_field_definitions.items()]
-      return f"GMN: {self.message_defintion_record.global_message_number}; FS: {fs}; DFS: {dfs}"
+    self.header = record_header
+
+    # Read each field defined in the definition message record.
+    with open(file=fit_file_path, mode="rb") as fit_file:
+      fit_file.seek(offset)
+
+      for fd in message_defintion_record.field_definitions:
+        f = Field(fd)
+        # Allow reading invalid field values, but note an error in the log.
+        if not f.evaluate(bites=fit_file.read(fd.size), endianness=message_defintion_record.endianness):
+          logger.error(f"Failed to evaluate field {fd.number}!")
+
+        self.fields[fd.number] = f
+        record_size += fd.size
+
+      for dfd in message_defintion_record.developer_field_definitions:
+        df = Field(dfd)
+        # Allow reading invalid field values, but note an error in the log.
+        if not df.evaluate(bites=fit_file.read(dfd.size), endianness=message_defintion_record.endianness):
+          logger.error(f"Failed to evaluate developer field {fd.number}!")
+
+        self.developer_fields[dfd.number] = df
+        record_size += dfd.size
+
+    return (valid, record_size)
+
+  def __repr__(self):
+    fs = [f"{number}: {field}" for number, field in self.fields.items()]
+
+    if 0 < len(self.developer_fields.keys()):
+      dfs = [f"{number}: {developer_field}" for number, developer_field in self.developer_fields.items()]
+      return f"Fields: {fs}; Developer Fields: {dfs}"
     else:
-      return f"GMN: {self.message_defintion_record.global_message_number}; FS: {fs}; DFS: <none>"
+      return f"Fields: {fs}"

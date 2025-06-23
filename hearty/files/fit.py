@@ -2,7 +2,8 @@
 from collections import OrderedDict # Let the container maintain the sorted keys instead of sorting each time.
 
 from ..protocols.fit.encoded.field import FieldDefinition, FIELD_DEFINITION_BYTES, Field
-from ..protocols.fit.encoded.record import NormalRecordHeader, CompressedTimestampRecordHeader, decode_record_header
+from ..protocols.fit.encoded.record import decode_record_header, NormalRecordHeader, MessageDefinitionRecord, MessageDataRecord
+from ..protocols.fit.decoded.message import FitMessage
 
 import logging
 logger = logging.getLogger(__name__)
@@ -42,121 +43,6 @@ class FitFileHeader:
   
     return valid
 
-class DefinitionMessageRecord:
-  def __init__(self):
-    self.reserved = None
-    self.architecture = None
-    self.endianness = None
-    self.global_message_number = None
-    self.field_definition_count = 0
-    self.field_definitions = list()
-    self.developer_field_definition_count = 0
-    self.developer_field_definitions = list()
-
-  def read_from_file(self, fit_file_path:str, offset:int, has_developer_fields:bool) -> tuple[bool, int]:
-    # Trust the contents of the definition message is valid, but verify when possible.
-    valid = True
-    record_size = 0
-
-    with open(file=fit_file_path, mode="rb") as fit_file:
-      fit_file.seek(offset)
-      
-      self.reserved = int.from_bytes(fit_file.read(1), byteorder="little")
-      self.architecture = int.from_bytes(fit_file.read(1), byteorder="little")
-      self.endianness = "little" if self.architecture == 0 else "big"
-      self.global_message_number = int.from_bytes(fit_file.read(2), byteorder=self.endianness)
-      self.field_definition_count = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
-
-      record_size += 5
-
-      # Each field defintion is 3 bytes: Field Defintion Number, Size (in bytes), Base Type
-      for _ in range(self.field_definition_count):
-        fd = FieldDefinition()
-        valid = fd.decode([int.from_bytes(fit_file.read(1), byteorder=self.endianness) for _ in range(FIELD_DEFINITION_BYTES)])
-
-        if not valid:
-          break
-
-        self.field_definitions.append(fd)
-        record_size += FIELD_DEFINITION_BYTES
-
-      # The record header indicates if there are developer field definitions.
-      if has_developer_fields:
-        self.developer_field_definition_count = int.from_bytes(fit_file.read(1), byteorder=self.endianness)
-
-        record_size += 1
-
-        for _ in range(self.developer_field_definition_count):
-          dfd = FieldDefinition()
-          dfd.decode([int.from_bytes(fit_file.read(1), byteorder=self.endianness) for _ in range(FIELD_DEFINITION_BYTES)])
-
-          if not valid:
-            break
-
-          self.developer_field_definitions.append(dfd)
-          record_size += FIELD_DEFINITION_BYTES
-  
-    return (valid, record_size)
-
-  def __repr__(self):
-    return f"[Definition Message Record] Endianness: {self.endianness}; GMN: {self.global_message_number}; FDC: {self.field_definition_count}; DFDC: {self.developer_field_definition_count}"
-
-class DataMessageRecord:
-  def __init__(self):
-    self.fields = dict()
-    self.developer_fields = dict()
-
-  def read_from_file(self, fit_file_path:str, offset:int, definition_message_record:DefinitionMessageRecord) -> tuple[bool, int]:
-    # Trust the contents of the definition message is valid, but verify when possible.
-    valid = True
-    record_size = 0
-
-    # Read each field defined in the definition message record.
-    with open(file=fit_file_path, mode="rb") as fit_file:
-      fit_file.seek(offset)
-
-      for fd in definition_message_record.field_definitions:
-        f = Field(fd)
-        if f.evaluate(bytes=fit_file.read(fd.size), endianness=definition_message_record.endianness):
-          self.fields[fd.number] = f
-        # self.fields[fd.number] = (fd.base_type, int.from_bytes(fit_file.read(fd.size), byteorder=definition_message_record.endianness))
-        record_size += fd.size
-
-      for dfd in definition_message_record.developer_field_definitions:
-        df = Field(dfd)
-        if df.evaluate(bytes=fit_file.read(dfd.size), endianness=definition_message_record.endianness):
-          self.developer_fields[dfd.number] = df
-        # self.developer_fields[dfd.number] = (dfd.base_type, int.from_bytes(fit_file.read(dfd.size), byteorder=definition_message_record.endianness))
-        record_size += dfd.size
-  
-    return (valid, record_size)
-
-  def __repr__(self):
-    return f"[Data Message Record] {[f"{key}: {field}" for key, field in self.fields.items()]}"
-
-class FitMesssageRecord:
-  """
-  Combines defintion and data message records from a FIT file into one message record.
-  """
-  def __init__(self, definition:DefinitionMessageRecord, data:DataMessageRecord):
-    self.global_message_number = definition.global_message_number
-
-    self.fields = OrderedDict()
-
-    for field in sorted([fd.number for fd in definition.field_definitions]):
-      self.fields[field] = data.fields[field]
-
-    self.developer_fields = OrderedDict()
-
-    for developer_field in sorted([dfd.number for dfd in definition.developer_field_definitions]):
-      self.developer_fields[developer_field] = data.developer_fields[developer_field]
-
-  def __repr__(self):
-    idfr = f"[{self.global_message_number}]"
-    fds = f"{[f"{key}: {field}" for key, field in self.fields.items()]}"
-    dfds = f"{[f"{developer_key}: {developer_field}" for developer_key, developer_field in self.developer_fields.items()]}"
-    return f"{idfr} - {fds} + {dfds}" if 0 < len(self.developer_fields.keys()) else f"{idfr} - {fds}"
-
 class FitFile:
   MAX_LOCAL_MESSAGE_TYPES = 16
 
@@ -167,6 +53,8 @@ class FitFile:
     self.crc = None
 
   def read_from_file(self, fit_file_path:str) -> int:
+    logger.info(f"FIT file: {fit_file_path}")
+
     record_count = 0
     snapshots = list() # Maps a local message type [0,15] to definition message record.
 
@@ -179,6 +67,10 @@ class FitFile:
     self.header = FitFileHeader()
 
     if self.header.read_from_file(fit_file_path=fit_file_path):
+      logger.info(f"Protocol version: {self.header.protocol_version}")
+      logger.info(f"Profile version: {self.header.profile_version}")
+      logger.info(f"FIT data size (bytes): {self.header.data_size}")
+
       offset = self.header.size
 
       # Note (2025-06-14@0300 UTC): Happened to be watching WyoOS's Context-Free Grammars: LR(k) Grammars video
@@ -211,12 +103,13 @@ class FitFile:
             if isinstance(record_header, NormalRecordHeader) and record_header.message_type:
               logger.debug(f"File offset: {offset:08X}")
               # Grab a definition message record.
-              definition_record = DefinitionMessageRecord()
-              successful, size = definition_record.read_from_file(fit_file_path=fit_file_path, offset=offset, has_developer_fields=record_header.message_type_specific)
+              definition_record = MessageDefinitionRecord()
+              successful, size = definition_record.read_from_file(fit_file_path=fit_file_path, offset=offset, record_header=record_header)
 
               if successful:
                 offset += size
                 data_size_remaining -= size
+                self.records.append(definition_record)
 
                 logger.debug(f"[Record {record_count + 1} Content ({size} bytes)]")
                 logger.debug(definition_record)
@@ -231,18 +124,19 @@ class FitFile:
               logger.debug(f"File offset: {offset:08X}")
               logger.debug(f"LMT:GMN Mappings: {snapshots[record_count]}")
               # Grab a data message record. Note that the data message record's local_message_type must be previously defined in order to grab the contents correctly.
-              data_record = DataMessageRecord()
+              data_record = MessageDataRecord()
               definition_record = snapshots[record_count][record_header.local_message_type]
-              successful, size = data_record.read_from_file(fit_file_path=fit_file_path, offset=offset, definition_message_record=definition_record)
+              successful, size = data_record.read_from_file(fit_file_path=fit_file_path, offset=offset, record_header=record_header, message_defintion_record=definition_record)
 
               if successful:
                 offset += size
                 data_size_remaining -= size
+                self.records.append(data_record)
 
                 logger.debug(f"[Record {record_count + 1} Content ({size} bytes)]")
                 logger.debug(data_record)
 
-                self.messages.append(FitMesssageRecord(definition=definition_record, data=data_record))
+                self.messages.append(FitMessage(definition=definition_record, data=data_record))
               else:
                 logger.error(f"Failed to read data message record at offset {offset - 1}!") # Back track one byte to the start of the record with its header.
                 break

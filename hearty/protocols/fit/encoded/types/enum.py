@@ -17,6 +17,6 @@ class Enum(BaseType):
     return 0xFF
 
   def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, str]:
-    valid = 1 == len(bytes) and bytes[0] != self.invalid_value
+    valid = 1 == len(bites) and bites[0] != self.invalid_value
 
-    return (valid, None if not valid else bytes[0])
+    return (valid, None if not valid else bites[0])

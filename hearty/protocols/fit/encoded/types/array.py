@@ -1,6 +1,15 @@
 
 from .base import BaseType
 
+def null_terminate(text:str) -> str:
+  if text == None:
+    raise ValueError("Expected a value.")
+
+  if not isinstance(text, str):
+    raise TypeError("Expected a str type.")
+
+  return f"\0" if 0 == len(text) else f"{text}\0" if text[-1] != '\0' else text
+
 # Null-terminated string encoded in UTF-8.
 class String(BaseType):
   NUMBER = 0x07
@@ -17,18 +26,19 @@ class String(BaseType):
   def invalid_value(self):
     return 0x00
 
-  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, str]:
-    # Basically, ensure no byte in the array is invalid.
-    valid = 0 < len(bytes)
+  # NOTE: Endianness is ignored.
+  def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, str]:
+    # Basically, ensure no byte in the array is invalid except the last one, the null-terminated byte).
+    valid = 0 < len(bites)
 
-    for _ in range(len(bytes)):
-      valid = True if _ < len(bytes) - 1 and bytes[_] != self.invalid_value else True if _ == len(bytes) - 1 and bytes[_] == self.invalid_value else False
-
-      if not valid:
-        break
+    if valid:
+      # TODO: Is this validation correct, namely: can a device report/record an empty string (a 1-byte array of 0x00 for the null-terminated condition)?
+      # NOTE: Unit tests assume that an empty string is _not_ allowed.
+      comparisons = [self.invalid_value == bites[_] for _ in range(len(bites) - 1)]
+      valid = False if all(comparisons) else self.invalid_value == bites[-1]
 
     # But we can convert to the text form of the data.
-    return (valid, None if not valid else str(bytes, encoding='utf-8'))
+    return (valid, None if not valid else str(bytes(bites), encoding='utf-8'))
 
 # Array of bytes. Field is invalid if all bytes are invalid.
 class Byte(BaseType):
@@ -46,14 +56,13 @@ class Byte(BaseType):
   def invalid_value(self):
     return 0xFF
 
-  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, list[int]]:
+  # NOTE: Endianness is ignored.
+  def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, list[int]]:
     # Basically, ensure no byte in the array is invalid.
-    valid = 0 < len(bytes)
+    valid = 0 < len(bites)
 
-    for byte in bytes:
-      valid = byte != self.invalid_value
+    if valid:
+      comparisons = [self.invalid_value == _ for _ in bites]
+      valid = False if all(comparisons) else True
 
-      if not valid:
-        break
-
-    return (valid, None if not valid else bytes)
+    return (valid, None if not valid else bites)

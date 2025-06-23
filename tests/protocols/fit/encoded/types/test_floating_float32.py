@@ -13,3 +13,27 @@ class TestFloat32(unittest.TestCase):
     self.assertTrue(tested.has_endianness)
     self.assertEqual("float32", tested.name)
     self.assertEqual(0xFFFF_FFFF, tested.invalid_value)
+
+  def test_evaluate_incorrect_bytes_length(self):
+    tested = Float32()
+
+    valid, value = tested.evaluate(bites=[], endianness="little")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+  def test_evaluate_invalid_value_big_endianness(self):
+    tested = Float32()
+
+    valid, value = tested.evaluate(bites=[0xFF, 0xFF, 0xFF, 0xFF], endianness="big")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+  def test_evaluate_invalid_value_little_endianness(self):
+    tested = Float32()
+
+    valid, value = tested.evaluate(bites=[0xFF, 0xFF, 0xFF, 0xFF], endianness="little")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+# TODO: Write test cases for some values.
+# Here's a nice source: https://en.wikipedia.org/wiki/Single-precision_floating-point_format#Notable_single-precision_cases

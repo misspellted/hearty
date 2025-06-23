@@ -19,8 +19,8 @@ class SInt8(BaseType):
   def invalid_value(self):
     return 0x7F
 
-  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
-    return evaluate_integer(signed=True, octets=SInt8.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+  def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=True, octets=SInt8.BYTES, bites=bites, endianness=endianness, invalid_value=self.invalid_value)
 
 class SInt16(BaseType):
   NUMBER = 0x83
@@ -38,8 +38,8 @@ class SInt16(BaseType):
   def invalid_value(self):
     return 0x7FFF
 
-  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
-    return evaluate_integer(signed=True, octets=SInt16.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+  def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=True, octets=SInt16.BYTES, bites=bites, endianness=endianness, invalid_value=self.invalid_value)
 
 class SInt32(BaseType):
   NUMBER = 0x85
@@ -57,8 +57,8 @@ class SInt32(BaseType):
   def invalid_value(self):
     return 0x7FFF_FFFF
 
-  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
-    return evaluate_integer(signed=True, octets=SInt32.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+  def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=True, octets=SInt32.BYTES, bites=bites, endianness=endianness, invalid_value=self.invalid_value)
 
 class SInt64(BaseType):
   NUMBER = 0x8E
@@ -76,5 +76,5 @@ class SInt64(BaseType):
   def invalid_value(self):
     return 0x7FFF_FFFF_FFFF_FFFF
 
-  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
-    return evaluate_integer(signed=True, octets=SInt64.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+  def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, int]:
+    return evaluate_integer(signed=True, octets=SInt64.BYTES, bites=bites, endianness=endianness, invalid_value=self.invalid_value)

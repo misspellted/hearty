@@ -5,15 +5,13 @@ from .base import BaseType
 # Thusly, the mechanism is to read the bytes through the struct module and unpacking them.
 import struct
 
-def evaluate_floating(octets:int, bytes:list[int], endianness:str, invalid_value:int=None) -> tuple[bool, float]:
-  valid = octets == len(bytes)
+def evaluate_floating(octets:int, bites:list[int], endianness:str, invalid_value:int=None) -> tuple[bool, float]:
+  valid = octets == len(bites)
   value = None
 
   if valid:
-    invalid_bytes = invalid_value.to_bytes(octets) # Endianness technically won't matter for invalid_value, because all bytes are 0xFF.
-    comparisons = [True if invalid_bytes[_] == bytes[_] else False for _ in range(octets)]
-    
-    valid = False if False not in comparisons else True
+    invalid_bites = invalid_value.to_bytes(octets) # Endianness technically won't matter for invalid_value, because all bytes are 0xFF.
+    valid = not all([invalid_bites[_] == bites[_] for _ in range(octets)])
 
     if valid:
       value = struct.unpack(f"{'<' if endianness == "little" else '>'}{'d' if octets == 8 else 'f'}", bytes)
@@ -36,8 +34,8 @@ class Float32(BaseType):
   def invalid_value(self):
     return 0xFFFF_FFFF
 
-  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, float]:
-    return evaluate_floating(octets=Float32.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+  def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, float]:
+    return evaluate_floating(octets=Float32.BYTES, bites=bites, endianness=endianness, invalid_value=self.invalid_value)
 
 class Float64(BaseType):
   NUMBER = 0x89
@@ -55,5 +53,5 @@ class Float64(BaseType):
   def invalid_value(self):
     return 0xFFFF_FFFF_FFFF_FFFF
 
-  def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, float]:
-    return evaluate_floating(octets=Float32.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
+  def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, float]:
+    return evaluate_floating(octets=Float32.BYTES, bites=bites, endianness=endianness, invalid_value=self.invalid_value)

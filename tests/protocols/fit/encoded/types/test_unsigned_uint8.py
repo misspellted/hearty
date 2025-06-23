@@ -13,3 +13,52 @@ class TestUInt8(unittest.TestCase):
     self.assertFalse(tested.has_endianness)
     self.assertEqual("uint8", tested.name)
     self.assertEqual(0xFF, tested.invalid_value)
+
+  def test_evaluate_incorrect_bytes_length(self):
+    tested = UInt8()
+
+    valid, value = tested.evaluate(bytes=[], endianness="little")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+  def test_evaluate_invalid_value_big_endianness(self):
+    tested = UInt8()
+
+    valid, value = tested.evaluate(bytes=[0xFF], endianness="big")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+  def test_evaluate_invalid_value_little_endianness(self):
+    tested = UInt8()
+
+    valid, value = tested.evaluate(bytes=[0xFF], endianness="little")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+  def test_evaluate_minimum_value_big_endianness(self):
+    tested = UInt8()
+
+    valid, value = tested.evaluate(bytes=[0x00], endianness="big")
+    self.assertTrue(valid)
+    self.assertEqual(0, value)
+
+  def test_evaluate_minimum_value_little_endianness(self):
+    tested = UInt8()
+
+    valid, value = tested.evaluate(bytes=[0x00], endianness="little")
+    self.assertTrue(valid)
+    self.assertEqual(0, value)
+
+  def test_evaluate_maximum_value_big_endianness(self):
+    tested = UInt8()
+
+    valid, value = tested.evaluate(bytes=[0xFE], endianness="big")
+    self.assertTrue(valid)
+    self.assertEqual(254, value)
+
+  def test_evaluate_maximum_value_little_endianness(self):
+    tested = UInt8()
+
+    valid, value = tested.evaluate(bytes=[0xFE], endianness="little")
+    self.assertTrue(valid)
+    self.assertEqual(254, value)

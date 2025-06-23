@@ -13,3 +13,52 @@ class TestUInt32Z(unittest.TestCase):
     self.assertTrue(tested.has_endianness)
     self.assertEqual("uint32z", tested.name)
     self.assertEqual(0x0000_0000, tested.invalid_value)
+
+  def test_evaluate_incorrect_bytes_length(self):
+    tested = UInt32Z()
+
+    valid, value = tested.evaluate(bytes=[], endianness="little")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+  def test_evaluate_invalid_value_big_endianness(self):
+    tested = UInt32Z()
+
+    valid, value = tested.evaluate(bytes=[0x00, 0x00, 0x00, 0x00], endianness="big")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+  def test_evaluate_invalid_value_little_endianness(self):
+    tested = UInt32Z()
+
+    valid, value = tested.evaluate(bytes=[0x00, 0x00, 0x00, 0x00], endianness="little")
+    self.assertFalse(valid)
+    self.assertIsNone(value)
+
+  def test_evaluate_minimum_value_big_endianness(self):
+    tested = UInt32Z()
+
+    valid, value = tested.evaluate(bytes=[0x00, 0x00, 0x00, 0x01], endianness="big")
+    self.assertTrue(valid)
+    self.assertEqual(1, value)
+
+  def test_evaluate_minimum_value_little_endianness(self):
+    tested = UInt32Z()
+
+    valid, value = tested.evaluate(bytes=[0x01, 0x00, 0x00, 0x00], endianness="little")
+    self.assertTrue(valid)
+    self.assertEqual(1, value)
+
+  def test_evaluate_maximum_value_big_endianness(self):
+    tested = UInt32Z()
+
+    valid, value = tested.evaluate(bytes=[0xFF, 0xFF, 0xFF, 0xFF], endianness="big")
+    self.assertTrue(valid)
+    self.assertEqual(4294967295, value)
+
+  def test_evaluate_maximum_value_little_endianness(self):
+    tested = UInt32Z()
+
+    valid, value = tested.evaluate(bytes=[0xFF, 0xFF, 0xFF, 0xFF], endianness="little")
+    self.assertTrue(valid)
+    self.assertEqual(4294967295, value)

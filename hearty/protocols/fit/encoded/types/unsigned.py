@@ -1,8 +1,11 @@
 
-from .base import BaseType
+from .base import BaseType, evaluate_integer
+
+# The following unsigned types are for values which are greater than or equal to zero.
 
 class UInt8(BaseType):
   NUMBER = 0x02
+  BYTES = 1
 
   def __init__(self):
     BaseType.__init__(self=self)
@@ -21,6 +24,7 @@ class UInt8(BaseType):
 
 class UInt16(BaseType):
   NUMBER = 0x84
+  BYTES = 2
 
   def __init__(self):
     BaseType.__init__(self=self)
@@ -39,6 +43,7 @@ class UInt16(BaseType):
 
 class UInt32(BaseType):
   NUMBER = 0x86
+  BYTES = 4
 
   def __init__(self):
     BaseType.__init__(self=self)
@@ -57,6 +62,7 @@ class UInt32(BaseType):
 
 class UInt64(BaseType):
   NUMBER = 0x8F
+  BYTES = 8
 
   def __init__(self):
     BaseType.__init__(self=self)
@@ -73,8 +79,12 @@ class UInt64(BaseType):
   def evaluate(self, bytes:list[int], endianness:str) -> tuple[bool, int]:
     return evaluate_integer(signed=False, octets=UInt64.BYTES, bytes=bytes, endianness=endianness, invalid_value=self.invalid_value)
 
+
+# The following unsigned types are for values which must be greater than zero.
+
 class UInt8Z(BaseType):
   NUMBER = 0x0A
+  BYTES = 1
 
   def __init__(self):
     BaseType.__init__(self=self)
@@ -93,6 +103,7 @@ class UInt8Z(BaseType):
 
 class UInt16Z(BaseType):
   NUMBER = 0x8B
+  BYTES = 2
 
   def __init__(self):
     BaseType.__init__(self=self)
@@ -111,6 +122,7 @@ class UInt16Z(BaseType):
 
 class UInt32Z(BaseType):
   NUMBER = 0x8C
+  BYTES = 4
 
   def __init__(self):
     BaseType.__init__(self=self)
@@ -129,6 +141,7 @@ class UInt32Z(BaseType):
 
 class UInt64Z(BaseType):
   NUMBER = 0x90
+  BYTES = 8
 
   def __init__(self):
     BaseType.__init__(self=self)

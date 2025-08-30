@@ -1,46 +1,4 @@
 
-# from config import FR35_DUMPS_DIR
-# from hearty.files.fit import FitFile
-# import logging
-# logger = logging.getLogger(__name__)
-
-# def main():
-#   logging.basicConfig(filename="hearty.log", level=logging.DEBUG, filemode="w")
-#   # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/DEVICE.FIT" # No errors reading. ^_^
-#   fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/ACTIVITY/F3C94745.FIT" # No errors reading. ^_^
-#   # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/MONITOR/F5A00000.FIT" # No errors reading. ^_^
-#   # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/RECORDS/RECORDS.FIT" # No errors reading. ^_^
-#   # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/SETTINGS/SETTINGS.FIT" # No errors reading. ^_^
-#   # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/SPORTS/0RRUN.FIT" # No errors reading. ^_^
-
-#   logger.info(f"Reading {fit_file_path}")
-#   ff = FitFile()
-#   record_count = ff.read_from_file(fit_file_path=fit_file_path)
-#   logger.info(f"Read {record_count} record(s)")
-#   print(f"Read {record_count} record(s)")
-
-#   message_count = len(ff.messages)
-#   logger.info(f"Read {message_count} message(s)")
-#   print(f"Read {message_count} message(s)")
-
-#   for message in ff.messages:
-#     logger.info(message)
-#     print(message)
-
-# if __name__ == "__main__":
-#   main()
-
-# ================================
-
-# from hearty.protocols.fit.messages import global_messages
-
-# print(global_messages[0x00]()) # Yes, I _know_ it's just 0... but.. it's what was on the documentation page, so... ^_^
-# print(global_messages[20]())
-
-# ================================
-
-# now, to combine them! WE HAVE THE POWA... _coughs_ ... I'm getting too old for references, haha!
-
 from config import FR35_DUMPS_DIR
 from hearty.files.fit import FitFile
 from hearty.protocols.fit.messages import global_messages, FileIdMessage # I has the burger that a chunk of what's in the files.fit 'package' will shift to this one...

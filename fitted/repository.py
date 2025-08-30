@@ -1,6 +1,10 @@
 
 from .util import chunked_sha3_512_hex
 
+from hearty.files.fit import FitFile
+from hearty.files.xml import GarminDeviceXml
+from hearty.protocols.fit.messages import global_messages, FileIdMessage
+
 import os, shutil
 
 class FitFilesRepository:
@@ -28,11 +32,73 @@ class FitFilesRepository:
     result = False
 
     if os.path.isdir(dump_directory):
-      device_fit_exists = os.path.exists(os.path.join(dump_directory, "DEVICE.FIT"))
-      device_xml_exists = os.path.exists(os.path.join(dump_directory, "GarminDevice.xml"))
+      ddfp = os.path.join(dump_directory, "DEVICE.FIT")
+      device_fit_exists = os.path.exists(ddfp)
       # Although, if it's not a Garmin FIT device, such as a scale made by FitBit (they don't utilize the FIT protocol, but just as a thought experiement), would they have their own XML file?
       # TODO: So maybe scan DEVICE.FIT to determine what manufacturer is involved, and then scan for that device manufacturer's XML file.
-      # For now, assume Garmin.
+
+      device_manufacturer = None
+      device_product = None
+      device_serial_number = None
+
+      if device_fit_exists:
+        ddff = FitFile()
+        record_count = ddff.read_from_file(ddfp)
+
+        print(f"\n\n<<< FitFile.read_from_file({ddfp}) >>>")
+
+        print(f"\tRecord Count: {record_count}")
+        print(f"\tMessage Count: {len(ddff.messages)}")
+
+        # To have messages, records are required.
+        if 0 < record_count:
+          fim:FileIdMessage = None
+
+          for message in ddff.messages:
+            if message.global_message_number in global_messages.keys():
+              gm = global_messages[message.global_message_number]()
+              gm.from_file_message_record(message)
+
+              if isinstance(gm, FileIdMessage):
+                fim = gm
+          
+          if fim != None:
+            print("\tfile_id message:")
+            print(f"\t\tType: {fim.type}")
+            print(f"\t\tManufacturer: {fim.manufacturer.value}")
+            print(f"\t\tProduct: {fim.product}")
+            print(f"\t\tSerial Number: {fim.serial_number}")
+            print(f"\t\tTime Created: {fim.time_created}") # Activity (type 4) files have valid time_created values, but type 1 (assuming 'device') files have invalid values 4294967295 (uint32) .. (thinking_face) ..
+            print(f"\t\tUnknown Fields? {0 < len(fim.unknown.keys())}")
+            for ufdn, ubtn_val in fim.unknown.items():
+              print(f"\t\t\t{ufdn}: {ubtn_val}")
+
+            device_manufacturer = fim.manufacturer.value
+            device_product = fim.product.value
+            device_serial_number = fim.serial_number.value
+
+        print(f">>> FitFile.read_from_file({ddfp}) <<<\n\n")
+
+      device_xml_exists = False
+      ddxp:str = None
+
+      # For now, assume Garmin is manufacturer 1.
+      if device_manufacturer == 1:
+        ddxp = os.path.join(dump_directory, GarminDeviceXml.FILE_NAME)
+
+      if ddxp != None:
+        device_xml_exists = os.path.exists(ddxp)
+
+        if device_xml_exists:
+          ddxf = GarminDeviceXml()
+          ddxf.read_from_file(ddxp)
+
+          print(f"\n\n<<< GarminDeviceXml.read_from_file({ddxp}) >>>")
+          
+          print(f"\tSchema: {ddxf.schema}")
+          print(f"\tDevice: {ddxf.device}")
+
+          print(f"\n\n>>> GarminDeviceXml.read_from_file({ddxp}) <<<")
 
       result = device_fit_exists and device_xml_exists
 

@@ -17,10 +17,14 @@ class FileIdMessage:
   }
 
   MANUFACTURERS = {
-    15: "Dynastream" # Also according to https://developer.garmin.com/fit/protocol/#record2datamessage:file_idlocalmsgtype0
+    1: "Garmin", # Based on DEVICE.FIT files coming from a Garmin Forerunner 35
+    15: "Dynastream", # Also according to https://developer.garmin.com/fit/protocol/#record2datamessage:file_idlocalmsgtype0
   }
 
   PRODUCTS = {
+    1: {
+      2503: "Forerunner 35" # Based on DEVICE.FIT files coming from a Garmin Forerunner 35
+    },
     15: {
       22: "<not yet identified>" # As seen on https://developer.garmin.com/fit/protocol/#record2datamessage:file_idlocalmsgtype0
     },

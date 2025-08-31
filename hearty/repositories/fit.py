@@ -1,19 +1,18 @@
 
-from .util import chunked_sha3_512_hex
-
 from hearty.files.fit import FitFile
 from hearty.files.xml import GarminDeviceXml
 from hearty.protocols.fit.messages import global_messages, FileIdMessage
 from hearty.repositories.base import UniqueFilesRepository
+from hearty.repositories.hashers import sha3_512
 
 import os
 
-class FitFilesRepository(UniqueFilesRepository):
+class FitDeviceFiles(UniqueFilesRepository):
   """
-  A repository of FIT files.
+  A collection of files that are unique from multiple "dump" directories associated with a Garmin FIT protocol device.
   """
   def __init__(self, root_directory_path:str):
-    UniqueFilesRepository.__init__(self, root_directory_path, chunked_sha3_512_hex)
+    UniqueFilesRepository.__init__(self, root_directory_path, sha3_512)
 
   def scan(self, dump_directory:str) -> bool:
     """

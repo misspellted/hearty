@@ -1,7 +1,8 @@
 
 import config
 
-from fitted.repository import FitFilesRepository
+from hearty.repositories.fit import FitDeviceFiles
+
 from fitted.util import delete_empty_directory
 
 import os
@@ -12,7 +13,7 @@ def on_drop(file_path:str, reason:str) -> bool:
   print(f"DRY-RUN={DRY_RUN} {"Not " if DRY_RUN else ""}Deleting {file_path} - {reason}")
   return not DRY_RUN
 
-ffr = FitFilesRepository(config.DIR_FR35_HASHED)
+ffr = FitDeviceFiles(config.DIR_FR35_HASHED)
 ffr.on_drop = on_drop
 ffr.on_read = lambda file_path, hash, hash_file_path: print(f"Read {file_path} with hash {hash}; moving to {hash_file_path}...")
 
@@ -20,12 +21,12 @@ load_count = ffr.load()
 
 print(f"Loaded {load_count} existing hash(es).")
 
-# Previously, HashedFitFiles::scan(dir) expected a directory of dump directories.
-# This is no longer the expectation; instead, FitFilesRepository::scan(dir) expects an individual dump directory.
+# Previously, [fitted]HashedFitFiles::scan(dir) expected a directory of dump directories.
+# This is no longer the expectation; instead, [hearty]FitDeviceFiles::scan(dir) expects an individual dump directory.
 # Therefore, the config.DIR_FR35_DUMPS value will need hanlded here.
 # TODO: Determine viability of maybe adding a ::overscan() or similar to recreate the old behavior/expectation.
 
-# In addition, FitFilesRepository::scan(dir) no longer reports a list of candidate dump directories, but instead
+# In addition, [hearty]FitDeviceFiles::scan(dir) no longer reports a list of candidate dump directories, but instead
 # indicates whether or not the provided directory is ready for import (has both DEVICE.FT and GarminDevice.xml
 # files at the root of the provided directory):
 #
@@ -33,6 +34,10 @@ print(f"Loaded {load_count} existing hash(es).")
 # + DEVICE.FIT
 # + GarminDevice.xml
 # + <other directories, such as ACTIVITY, MONITOR, etc>/
+#
+# NOTE: The work in parsing the GarminDevice.xml may in fact alter the above directory structure, as the file utilizes
+# a common 'GARMIN' base/root directory in the location.path references in the XML elements. However, the current "fr35"
+# "project" files do not adhere to that potential new expectation, so this alteration may or may not be made. Stay tuned!
 
 readable:list[str] = []
 

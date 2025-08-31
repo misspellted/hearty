@@ -1,9 +1,8 @@
 
 import config
 
+from hearty.files import delete_empty_directory
 from hearty.repositories.fit import FitDeviceFiles
-
-from fitted.util import delete_empty_directory
 
 import os
 

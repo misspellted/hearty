@@ -1,10 +1,10 @@
 
 import unittest
-
-from fitted.util import *
 import tempfile
 import os
 import shutil
+
+from hearty.files import delete_empty_directory
 
 class TestDeleteEmptyDirectory(unittest.TestCase):
   def setUp(self):

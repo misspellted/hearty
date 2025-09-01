@@ -1,6 +1,4 @@
 
-# TODO: Import base types implementations into the map of base_type_number: <instance>.
-
 from .enum import Enum
 from .signed import SInt8, SInt16, SInt32, SInt64
 from .unsigned import UInt8, UInt16, UInt32, UInt64, UInt8Z, UInt16Z, UInt32Z, UInt64Z

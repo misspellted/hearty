@@ -38,8 +38,6 @@ class FitFileHeader:
 
         if valid and FitFileHeader.SIZE_CRC <= self.size:
           self.crc = f"{int.from_bytes(fit_file.read(2), byteorder="little"):04X}"
-
-          # TODO: Validate the CRC is correct.
   
     return valid
 
@@ -158,7 +156,6 @@ class FitFile:
           fit_file.seek(offset)
           self.crc = int.from_bytes(fit_file.read(FitFileHeader.SIZE_CRC - FitFileHeader.SIZE), byteorder="little")
 
-          # TODO: Verify the CRC.
           logger.debug(f"File CRC: {self.crc:04X}")
 
     return record_count

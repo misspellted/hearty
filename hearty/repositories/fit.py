@@ -27,8 +27,6 @@ class FitDeviceFiles(UniqueFilesRepository):
     if result:
       ddfp = os.path.join(dump_directory, "DEVICE.FIT")
       device_fit_exists = os.path.exists(ddfp)
-      # Although, if it's not a Garmin FIT device, such as a scale made by FitBit (they don't utilize the FIT protocol, but just as a thought experiement), would they have their own XML file?
-      # TODO: So maybe scan DEVICE.FIT to determine what manufacturer is involved, and then scan for that device manufacturer's XML file.
 
       # For now, assume Garmin is the manufacturer.
       ddxp = os.path.join(dump_directory, GarminDeviceXml.FILE_NAME)
@@ -52,8 +50,6 @@ class FitDeviceFiles(UniqueFilesRepository):
       self.drop(file_path, "PyFR 'FITS' file not original data dump file; this file could be recrated later on, depending on reworked PyFR work or PyFR incorporation into this project.")
       resume = False
 
-    # TODO: Move this back into scan() or maybe find a better place for it? But for now, we're regressing scan()
-    # to just finding verifying the DEVICE.FT and GarminDevice.xml files exist, but not inspect them.
     elif file_path.endswith("DEVICE.FIT"):
       device_manufacturer = None
       device_product = None
@@ -96,8 +92,6 @@ class FitDeviceFiles(UniqueFilesRepository):
 
       print(f">>> FitFile.read_from_file({file_path}) <<<\n\n")
 
-    # TODO: Move this back into scan() or maybe find a better place for it? But for now, we're regressing scan()
-    # to just finding verifying the DEVICE.FT and GarminDevice.xml files exist, but not inspect them.
     elif file_path.endswith("GarminDevice.xml"):
       ddxf = GarminDeviceXml()
       ddxf.read_from_file(file_path)

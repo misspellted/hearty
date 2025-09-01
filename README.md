@@ -1,39 +1,36 @@
 # Overview
 
-A collection of (and working on now combining the) multiple efforts to process fitness data locally (instead of relying on corporate paywalls, online accounts, and other such nonsensicals).
+This project intends to process fitness data locally for human consumption. The requirements of an online account, possible paywalls, unreasonable license agreements, or other such nonsensicals, just to read the data that is generated locally to the human likely wanted to review the data in the future, is unreasonable and places an unfair burden on the consumer. Especially in light of data breaches, and the type of data being stored is pretty personal (potentially personally identifying), it is in the interests of the consumer to store the data on systems they have complete adminstrative control over, up to and including full and permanent deletion at their discretion, instead of "deactivation" where the data is still subject to breach, even if it is considered "dormant".
 
-## pyfr
-
-A project that parsed FIT files with the intent to begin graphically presenting the data for human utilization.
-
-## hearty
-
-`hearty` (the newest variant of the efforts) started as a rewrite of the pyFR/pyfit project I was working on at the time, based on files dumped from a Garmin Forerunner 35 I have been using for a good number of months now.
-
-## fitted
-
-`fitted` is a project to collect the unique files dumped from the Garmin Forerunner 35, so that processing the data from the multiple dumps doesn't accidentally introduce multiplications of efforts (walking, etc) that aren't real.
-
-### FitFilesRepository [now FitDeviceFiles] (from fitted::README.md) [was HashedFitFiles]
-
-Given a collection of dump directories (tested with dumps from an in-use Garmin Forerunner 35) and a "library" directory, maintains a SHA3-512-based hashed collection of FIT files (and the odd ERR_LOG.TXT and GarminDevice.xml). These hashes are used to detect unique-ish-enough files across multiple dumps for later processing.
-
-Note that this "library" path is not hard coded; this class still needs to be pointed to the directories involved, both the "library" directory and the directory of dump directories. These are provided as inputs, and it can be noted that I've got them stored under a `config.py` file, but it's suspiciously.. I mean, totally not suspecticiously... (eyes) included. It just has a couple of constants as imported in the `test.py` program file (for now); later iterations may take the values from arguments to the program, who knows... maybe even pull a totally not secret value from the cloud in the future.. but that's nonesensestalkses.
-
-The FitFilesRepository may still retain a reference to "PyFR".
-
-It, by way of a companion bit of shell scripting and maybe a udev rule or something (it's a bit fuzzy, I need sleep!) back a few months ago, I get "dumps" of the files on the Forerunner 35 when I mount it over USB. This generates a timestamped (yyyy-0m-0d_0h-0m-0s) dump directory containing the subdirectories mounted (under the GARMIN/GARMIN folder on the device; so, the ACTIVITY, RECORDS, DEBUG, etc subdirectories) as well as a couple of what I call "root" files (DEVICE.FIT, GarminDevice.xml).
-
-These dump directories had similarly named FIT files in each subdirectory, and that's when I realized I could track history longer than the on-device displayed week-ish/seven days. However, I had no easy way to identify which file was the same or which was a new file in a dump. I pondered a bit, and then realized hashing could be useful. And, it turns out, it was. (Of course it did; otherwise, no need to mention it in any detail or spend a few keystrokes typing up the HashedFitFiles/whatever above, or even moving the code to here).
-
-Now that the dump directories are all collected in a "library" of sorts with FitFilesRepository, PyFR can resume, but instead on individual dump directories, the hashed and hopefully-still-unique files of them all combined over time.
-
-Of course, now I want to merge PyFR into this project... ah, hopes and dreams...
-
-Anyways, back to it, I guess. And by it, I mean, procrastination.
-
-Maybe a walk later...
+The project stands as a compilations of previous efforts, after observing that connecting a Garmine Forerunner 35 to my desktop over USB provided a USB mass storage device-type interface - where I could simply copy files over for future processing:
 
 ## fr35
 
-`fr35` is an unpublished "project", possibly referenced elsewhere, that aimed to develop an automated dumping process of the Garmin Forerunner 35 when mounted over USB. I haven't assessed the files for publication yet, but it's mainly the shell script and udev rules/systemd services to accomplish this goal.
+This "project" is actually a collection of files used to semi-automate dumping (copying the files from the device mounted over USB as a mass storage device). While there isn't a local Git repository of the files, I could easily collect them in such a way to facilitate absorption, but their contents still need auditing to determine what could be included for publication via the `hearty` project. Namely, I am concerned with hard coded values that might expose information more than I want with what is already accounted for with via (heh) online accounts, such as this GitHub one.
+
+## pyfr
+
+It started out as the `pyfr` project ([py]thon [f]ore[r]unner) as I have a Garmin Forerunner 35 (the latest fitness wearable I've owned since a Fitbit Flex 2 and I forget the second Fitbit I had). The objective was to extract various tidbits, unfiddled by online accounts, online storage not under my control with a side of possible privacy invasion, and make it consumable by this human (arguable...) in a graphical manner for review and decision making for future fitness endeavors.
+
+The end point (at the time of creating `fitted` below) was a reworked "time-stream" file, so that the record stream was aligned with time (using the `.FITS` extension). I hadn't yet made it graphically represent the data, but time-stream data is likely the precursor, so that is what I was working on.
+
+There was a start to rewrite `pyfr` as `pyfit` (for potential upload to GitHub for dissemination/release management), but that did not get too far...
+
+## fitted
+
+`fitted` was going to take over the `pyfit` rewrite, but instead it became the solution to handling multiple `fr35` dumps having the same files over time. For example, having X copies of a walk activity might count X times towards fitness goals, which would contribute to a misrepresentation of progress.
+
+I didn't have a good idea of how to identifiy unique files over dated dump directories (and such dump directory names weren't consistent at the beginning, but cleaned up with `fr35` becoming useful). I had the thought of hashing the file contents, and tested it out with SHA3-512. Why 3-512? No idea, but 3 > 2, and SHA1 is effectively compromisable (more so for MD5), so... 3 it was. And 512 is a nice number, and while it could be 1024, such bits are not yet available, or at least, that I didn't see in the `hashlib` that comes with Python. I even had to install the `sha3sum` package to test the results of the hashing, which became a useful tidbit of information when working on the unit tests!
+
+Also, given my online handle of 'misspellted', `*ted`-suffixed projects tend to have a soft spot in the ol' ticker. But as we all know, good times do come to an end, especially when a new project name idea arises: `hearty` (speaking of ticker, lol!).
+
+# Roadmap
+
+* [x] Random explorative coding sessions to learn how FIT files are structured.
+* [x] Semi-automated dumps (sorry, just gotta chuckle) - still requires manual invocation since mounting is not (yet?) automated upon connecting the FR35 to the computer over USB.
+* [x] Unique file determination and organization.
+* [ ] Return to form with processing for graphical output.
+* [ ] Refactor everything again, for the 127th time. (yes, this is a reference! woo!)
+* [ ] Anyways, back to it, I guess. And by it, I mean, procrastination.
+* [ ] Maybe a walk.
+* [ ] Later.

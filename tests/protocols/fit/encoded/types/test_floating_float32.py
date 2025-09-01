@@ -34,6 +34,3 @@ class TestFloat32(unittest.TestCase):
     valid, value = tested.evaluate(bites=[0xFF, 0xFF, 0xFF, 0xFF], endianness="little")
     self.assertFalse(valid)
     self.assertIsNone(value)
-
-# TODO: Write test cases for some values.
-# Here's a nice source: https://en.wikipedia.org/wiki/Single-precision_floating-point_format#Notable_single-precision_cases

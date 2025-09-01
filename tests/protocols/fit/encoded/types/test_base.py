@@ -47,5 +47,5 @@ class TestBaseType(unittest.TestCase):
     with self.assertRaises(NotImplementedError) as bed:
       f"{tested}"
 
-# NOTE: The evaluate_integer function won't have unit tests here; instead, they are split among the various test_(un|)signed_$intType.py test cases.
+# The evaluate_integer function won't have unit tests here; instead, they are split among the various test_(un|)signed_$intType.py test cases.
 # If there is a problem with this strategy, raise an issue &| contribute them here.

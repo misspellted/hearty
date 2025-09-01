@@ -30,22 +30,18 @@ class FileIdMessage:
     },
   }
 
-  # As visible on https://developer.garmin.com/fit/protocol/#record2datamessage:file_idlocalmsgtype0, time_created having a value of 621463080 corresponds to 14 Aug 2009. # TODO: Is the time_created field in Unix epoch seconds?
-
   def __init__(self):
     self.unknown = OrderedDict()
 
   def from_file_message_record(self, file_message_record):
     for fdn, btn_val in file_message_record.fields.items():
       if fdn in FileIdMessage.FIELDS:
-        setattr(self, FileIdMessage.FIELDS[fdn], btn_val) # TODO: Evaluate the value through the base type. # TODO: Ensure the base type from the file record is expected (as noted above).
+        setattr(self, FileIdMessage.FIELDS[fdn], btn_val)
       else:
         self.unknown[fdn] = btn_val
 
     for dfdn, dbtn_val in file_message_record.developer_fields:
       pass
-      # TODO: Can the FileId message have developer fields?
-      # Well, maybe, since in the exampe at https://developer.garmin.com/fit/protocol/#record7definitionmessage:recordmesg_num0x14 shows the global message 20 (Record) as having being redefined to include developer fields. (thinking_face)
 
 def new_file_id_message():
   return FileIdMessage()

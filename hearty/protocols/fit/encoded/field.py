@@ -44,5 +44,4 @@ class Field:
     return valid
 
   def __repr__(self):
-    # TODO: Allow determination if value was actually an invalid value versus a failed evaluation.
     return f"{self.value if self.value != None else '<none>'}"

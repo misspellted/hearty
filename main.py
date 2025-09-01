@@ -1,56 +1,67 @@
 
-from config import FR35_DUMPS_DIR
-from hearty.files.fit import FitFile
-from hearty.protocols.fit.messages import global_messages, FileIdMessage # I has the burger that a chunk of what's in the files.fit 'package' will shift to this one...
+import config
 
-import logging
-logger = logging.getLogger(__name__)
+from hearty.files import delete_empty_directory
+from hearty.repositories.fit import FitDeviceFiles
 
-def main():
-  logging.basicConfig(filename="hearty.log", level=logging.DEBUG, filemode="w")
-  # Apparently the Garmin Forerunner 35 (m:1/p:2503) emits unknown-to-me FDNs:
+import os
 
-  # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/DEVICE.FIT" # file_id.type => 1 (unknown FDNs - '5': 0 <uint16>) | Also: invalid time_created value (4294967295)
-  # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/ACTIVITY/F3C94745.FIT" # file_id.type => 4 (unknown FDNs - '5': 65535 <uint16, invalid value>)
-  # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/MONITOR/F5A00000.FIT" # file_id.type => 32 (unknown FDNs - '5': 214 <uint16>, '6': 65535 <uint16, invalid value>)
-  # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/RECORDS/RECORDS.FIT" # file_id.type => 29 (unknown FDNs - '5': 0 <uint16>) | Also: invalid time_created value (4294967295)
-  # fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/SETTINGS/SETTINGS.FIT" # file_id.type => 2 (unknown FDNs - '5': 0 <uint16>) | Also: invalid time_created value (4294967295)
-  fit_file_path = f"{FR35_DUMPS_DIR}/2025-05-24_23-14/SPORTS/0RRUN.FIT" # file_id.type => 3 (unknown FDNs - '5': 0 <uint16>) | Also: invalid time_created value (4294967295)
+DRY_RUN = True
 
-  logger.info(f"Reading {fit_file_path}")
-  print(f"Reading {fit_file_path}")
-  ff = FitFile()
-  record_count = ff.read_from_file(fit_file_path=fit_file_path)
-  logger.info(f"Read {record_count} record(s)")
-  print(f"Read {record_count} record(s)")
+def on_drop(file_path:str, reason:str) -> bool:
+  print(f"DRY-RUN={DRY_RUN} {"Not " if DRY_RUN else ""}Deleting {file_path} - {reason}")
+  return not DRY_RUN
 
-  message_count = len(ff.messages)
-  logger.info(f"Read {message_count} message(s)")
-  print(f"Read {message_count} message(s)")
+ffr = FitDeviceFiles(config.DIR_FR35_HASHED)
+ffr.on_drop = on_drop
+ffr.on_read = lambda file_path, hash, hash_file_path: print(f"Read {file_path} with hash {hash}; moving to {hash_file_path}...")
 
-  fim = None
+load_count = ffr.load()
 
-  for message in ff.messages:
-    logger.info(message)
-    # print(message)
+print(f"Loaded {load_count} existing hash(es).")
 
-    if message.global_message_number in global_messages.keys():
-      gm = global_messages[message.global_message_number]()
-      gm.from_file_message_record(message)
+# Previously, [fitted]HashedFitFiles::scan(dir) expected a directory of dump directories.
+# This is no longer the expectation; instead, [hearty]FitDeviceFiles::scan(dir) expects an individual dump directory.
+# Therefore, the config.DIR_FR35_DUMPS value will need hanlded here.
+# TODO: Determine viability of maybe adding a ::overscan() or similar to recreate the old behavior/expectation.
 
-      if isinstance(gm, FileIdMessage):
-        fim = gm
-  
-  if fim != None:
-    print("file_id message:")
-    print(f"\tType: {fim.type}")
-    print(f"\tManufacturer: {fim.manufacturer}")
-    print(f"\tProduct: {fim.product}")
-    print(f"\tSerial Number: {fim.serial_number}")
-    print(f"\tTime Created: {fim.time_created}") # Activity (type 4) files have valid time_created values, but type 1 (assuming 'device') files have invalid values 4294967295 (uint32) .. (thinking_face) ..
-    print(f"\tUnknown Fields? {0 < len(fim.unknown.keys())}")
-    for ufdn, ubtn_val in fim.unknown.items():
-      print(f"\t\t{ufdn}: {ubtn_val}")
+# In addition, [hearty]FitDeviceFiles::scan(dir) no longer reports a list of candidate dump directories, but instead
+# indicates whether or not the provided directory is ready for import (has both DEVICE.FT and GarminDevice.xml
+# files at the root of the provided directory):
+#
+# <provided_directory>/
+# + DEVICE.FIT
+# + GarminDevice.xml
+# + <other directories, such as ACTIVITY, MONITOR, etc>/
+#
+# NOTE: The work in parsing the GarminDevice.xml may in fact alter the above directory structure, as the file utilizes
+# a common 'GARMIN' base/root directory in the location.path references in the XML elements. However, the current "fr35"
+# "project" files do not adhere to that potential new expectation, so this alteration may or may not be made. Stay tuned!
 
-if __name__ == "__main__":
-  main()
+readable:list[str] = []
+
+for dump_directory in os.listdir(config.DIR_FR35_DUMPS):
+  ddp = os.path.join(config.DIR_FR35_DUMPS, dump_directory)
+  scan_result = ffr.scan(ddp)
+
+  if scan_result:
+    readable.append(ddp)
+    print(f"~~ {ddp} looks to be readable into the repository.")
+  else:
+    print(f"!! {ddp} does not contain the required device files for readability into the repository.")
+
+read:dict[str, tuple[str, str]] = {}
+
+for dump_directory in readable:
+  read.update(ffr.read(dump_directory))
+
+[print(f"++ Hash {hash}: {paths[0]} -> {paths[1]}") for hash, paths in read.items()]
+
+# Effectively, the old HashedFitFiles::wipe(dumps_directory):
+for dump_directory in os.listdir(config.DIR_FR35_DUMPS):
+  ddp = os.path.join(config.DIR_FR35_DUMPS, dump_directory)
+
+  if not DRY_RUN and delete_empty_directory(ddp):
+    print(f"-- {ddp} deleted.")
+  else:
+    print(f"!! {ddp} needs manual deletion. [DRY_RUN={DRY_RUN}]")

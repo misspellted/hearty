@@ -69,7 +69,7 @@ class GarminDeviceXml(XmlFile):
             # For a Forerunner 35 on SoftwareVersion 360, the device's XML file contains child nodes out of these: DataType and UpdateFile.
             self.device["MassStorageMode"] = {}
             self.device["MassStorageMode"]["DataType"] = []
-            # self.device["MassStorageMode"]["UpdateFile"] = [] # TODO: Maybe extract part numbers? Otherwise, not sure what else is useful...
+            # self.device["MassStorageMode"]["UpdateFile"] = []
 
             for node in child:
               node_tag = split_namespace_from_name(node.tag)

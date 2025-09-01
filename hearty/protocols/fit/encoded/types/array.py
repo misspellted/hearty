@@ -26,14 +26,12 @@ class String(BaseType):
   def invalid_value(self):
     return 0x00
 
-  # NOTE: Endianness is ignored.
+  # Endianness is ignored, since an array of bytes has none.
   def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, str]:
     # Basically, ensure no byte in the array is invalid except the last one, the null-terminated byte).
     valid = 0 < len(bites)
 
     if valid:
-      # TODO: Is this validation correct, namely: can a device report/record an empty string (a 1-byte array of 0x00 for the null-terminated condition)?
-      # NOTE: Unit tests assume that an empty string is _not_ allowed.
       comparisons = [self.invalid_value == bites[_] for _ in range(len(bites) - 1)]
       valid = False if all(comparisons) else self.invalid_value == bites[-1]
 
@@ -56,7 +54,7 @@ class Byte(BaseType):
   def invalid_value(self):
     return 0xFF
 
-  # NOTE: Endianness is ignored.
+  # Endianness is ignored, since an array of bytes has none.
   def evaluate(self, bites:list[int], endianness:str) -> tuple[bool, list[int]]:
     # Basically, ensure no byte in the array is invalid.
     valid = 0 < len(bites)

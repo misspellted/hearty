@@ -4,7 +4,7 @@ from ..encoded.record import MessageDefinitionRecord, MessageDataRecord
 from collections import OrderedDict # Let the container maintain the sorted keys instead of sorting each time.
 
 class FitMessage:
-  def __init__(self, definition:MessageDefinitionRecord, data:MessageDataRecord): # TODO: Add "profile" support for better record and field names.
+  def __init__(self, definition:MessageDefinitionRecord, data:MessageDataRecord):
     self.global_message_number = definition.global_message_number
 
     self.fields = OrderedDict()

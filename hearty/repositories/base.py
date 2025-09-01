@@ -137,7 +137,6 @@ class UniqueFilesRepository:
 
     return result
 
-  # TODO: Reimplement this (as it previously occurred at the end of [fitted]HashedFitFiles::read()).
   def wipe(self, dump_directory:str) -> bool:
     """
     Recursively earses a "dump" directory.

@@ -43,9 +43,9 @@ class UniqueFilesRepository:
 
     For example, a Garmin FIT protocol files repository requires that the "dump" directory contain both the DEVICE.FIT and GarminDevice.xml files.
 
-    By default, returns False indicating the provided "dump" directory fails to conform to the repository expectations.
+    By default, returns the indication whether or not the provided "dump" directory is in fact a directory.
     """
-    return False
+    return os.path.isdir(dump_directory)
 
   def on_file(self, file_path:str) -> bool:
     """
@@ -108,16 +108,13 @@ class UniqueFilesRepository:
             if file_contents_hash in self.existing_hashes:
               self.drop(file_path, f"Deleting {file_path} as {file_contents_hash} already exists; assuming it is a duplicate from previous dump.")
             else:
-              # TODO: Absorb the ::move() method here.
-              # self.move(current_directory, file_path, file_contents_hash)
-
               # Get the relative path in the dump directory for the file.
               rel_file_path = file_path.removeprefix(f"{current_directory}{os.path.sep}")
               rfp_parts = rel_file_path.split(os.path.sep)
               rel_directory, rel_file = ("_", rfp_parts[0]) if len(rfp_parts) < 2 else (rfp_parts[0], rfp_parts[1])
 
               # Create the directory ready for the file move.
-              hash_directory = os.path.join(self.root_directory_path, file_contents_hash)
+              hash_directory = os.path.join(self.root_directory, file_contents_hash)
               hash_file_directory = os.path.join(hash_directory, rel_directory)
 
               # The hash directory shouldn't already exist, if the anticipated state of the existing collection is maintained.
@@ -129,10 +126,6 @@ class UniqueFilesRepository:
 
               # Verify the move was successful.
               if os.path.isfile(hash_directory_file):
-                # If it exists, we can clean up the old file if it still exists (not sure how each platform moves (actual vs copied)...).
-                if os.path.isfile(file_path):
-                  self.drop(file_path, f"Deleting {file_path} as it was successfully copied to {hash_directory_file}.")
-
                 self.on_read(file_path, file_contents_hash, hash_directory_file)
               
               # Else, exit immediately.

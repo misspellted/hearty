@@ -14,7 +14,7 @@ A project that parsed FIT files with the intent to begin graphically presenting 
 
 `fitted` is a project to collect the unique files dumped from the Garmin Forerunner 35, so that processing the data from the multiple dumps doesn't accidentally introduce multiplications of efforts (walking, etc) that aren't real.
 
-### FitFilesRepository (from fitted::README.md) [was HashedFitFiles]
+### FitFilesRepository [now FitDeviceFiles] (from fitted::README.md) [was HashedFitFiles]
 
 Given a collection of dump directories (tested with dumps from an in-use Garmin Forerunner 35) and a "library" directory, maintains a SHA3-512-based hashed collection of FIT files (and the odd ERR_LOG.TXT and GarminDevice.xml). These hashes are used to detect unique-ish-enough files across multiple dumps for later processing.
 
